@@ -1,37 +1,34 @@
 from source_download import SourceDownload
 from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip
-from moviepy.video.fx import headblur
 import os
-os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/6.0/bin/ffmpeg"
 
 
-def generate_watermark(start, duration):
+def generate_watermark(start, duration, cut=None):
 
     print("Generating watermark starting at", start, "with this duration", duration)
+
+    final_cut = cut if cut else 0
 
     return (ImageClip("tools/logo.png")
             .set_position((0.885, 0.83), relative=True)
             .set_start(start)
-            .set_duration(duration)
+            .set_duration(duration - final_cut)
             .resize(0.15)
             .crossfadein(1)
             .crossfadeout(1))
 
 
-def composite_clip(opening, clip):
+def composite_clip(clip):
 
     print("Generating the output for the clip", clip)
 
-    opening = (VideoFileClip(opening)
-               .set_start(0)
-               .crossfadeout(1))
     clip = (VideoFileClip(clip)
-            .set_start(opening.duration)
+            .set_start(0)
             .crossfadein(1)
             .crossfadeout(1))
-    watermark = generate_watermark(opening.duration, clip.duration)
+    watermark = generate_watermark(0, clip.duration)
 
-    return CompositeVideoClip([opening, clip, watermark])
+    return CompositeVideoClip([clip, watermark])
 
 
 def composite_full_video(opening, clips):
@@ -53,7 +50,7 @@ def composite_full_video(opening, clips):
         full_video.append(video_clip)
         current_duration += video_clip.duration
 
-    watermark = generate_watermark(opening.duration, current_duration)
+    watermark = generate_watermark(opening.duration, current_duration, cut=6)
     full_video.append(watermark)
 
     return CompositeVideoClip(full_video)
@@ -62,7 +59,7 @@ def composite_full_video(opening, clips):
 def get_clips(source):
 
     clips = [source + x for x in os.listdir(source)]
-    clips.remove(source + ".gitignore")
+    clips = [clip for clip in clips if clip.endswith('.mp4') or clip.endswith('.avi') or clip.endswith('.wmv')]
     clips.sort()
 
     return clips
@@ -73,12 +70,12 @@ def main(name):
     # SourceDownload.download_file("https://drive.google.com/drive/folders/1bGbVRol7v_biZ6k1_GCwHbte9J8E1q8o")
 
     opening = "tools/opening.mp4"
-    source = "source/"
+    source = "test_source/"
     output = "output/"
     clips = get_clips(source)
 
     for clip in clips:
-        single_clip = composite_clip(opening, clip)
+        single_clip = composite_clip(clip)
         single_clip.write_videofile(output + clip.replace(source, ""))
 
     full_video = composite_full_video(opening, clips)
