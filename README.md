@@ -9,7 +9,7 @@ mark and then making a recap.
 ### Current version
 
 ---
-`v0.1`
+`v0.2`
 
 ### Installation
 
@@ -21,5 +21,5 @@ ___
 * `.\venv\Scripts\activate.bat`
 * `pip install -r requirements.txt`
 * Move your clips to the `source` folder
-* `pyhon main.py`
+* `pyhon main.py --source='source/' --output='output/'`
 * Your clips must be available in the `output` folder

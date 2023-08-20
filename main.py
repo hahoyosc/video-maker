@@ -12,12 +12,12 @@ def get_clips(source):
     return clips
 
 
-def main():
-    # SourceDownload.download_file("https://drive.google.com/drive/folders/1bGbVRol7v_biZ6k1_GCwHbte9J8E1q8o")
+def main(source, output, drive):
+
+    if drive:
+        SourceDownload.download_file("https://drive.google.com/drive/folders/" + drive)
 
     opening = "tools/opening.mp4"
-    source = "source/"
-    output = "output/"
     clips = get_clips(source)
 
     for clip in clips:
@@ -29,4 +29,14 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--source', type=str, default='../', required=False, help="Highlights source folder")
+    parser.add_argument('-o', '--output', type=str, default='../output/', required=False,
+                        help="Processed highlights and recap output folder")
+    parser.add_argument('-d', '--drive', type=str, default=None, required=False,
+                        help="Google Drive ID in case you need to download the highlights")
+    args = parser.parse_args()
+
+    main(source=args.source, output=args.output, drive=args.drive)
