@@ -9,7 +9,7 @@ mark and then making a recap.
 ### Current version
 
 ---
-`v0.2`
+`v0.3`
 
 ### Installation
 
@@ -23,3 +23,8 @@ ___
 * Move your clips to the `source` folder
 * `pyhon main.py --source='source/' --output='output/'`
 * Your clips must be available in the `output` folder
+
+### Executable
+
+---
+You also can download and execute the `like-a-pro-video-maker.bat` file in your highlight directory.
