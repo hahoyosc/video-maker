@@ -9,7 +9,7 @@ mark and then making a recap.
 ### Current version
 
 ---
-`v0.3`
+`v1.0`
 
 ### Installation
 
@@ -28,3 +28,9 @@ ___
 
 ---
 You also can download and execute the `like-a-pro-video-maker.bat` file in your highlight directory.
+
+### Full video feature
+
+---
+If you want to run the full video feature you must add a `params.txt` parameters file that contains the time marks you
+want in the final video with your raw recording and run the `like-a-pro-full-video.bat` executable file.

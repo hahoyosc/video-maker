@@ -29,14 +29,14 @@ def composite_clip(clip):
     return CompositeVideoClip([clip, watermark])
 
 
-def composite_full_video(opening, clips):
+def composite_recap(opening, clips):
 
-    print("Generating the full video with these clips", clips)
+    print("Generating the recap with these clips", clips)
 
     opening = (VideoFileClip(opening)
                .set_start(0)
                .crossfadeout(1))
-    full_video = [opening]
+    recap = [opening]
     current_duration = opening.duration
 
     for clip in clips:
@@ -45,8 +45,35 @@ def composite_full_video(opening, clips):
                       .set_start(current_duration)
                       .crossfadein(1)
                       .crossfadeout(1))
-        full_video.append(video_clip)
+        recap.append(video_clip)
         current_duration += video_clip.duration
+
+    watermark = generate_watermark(opening.duration, current_duration, cut=6)
+    recap.append(watermark)
+
+    return CompositeVideoClip(recap)
+
+
+def composite_full_video(opening, source_video, time_marks):
+
+    source_video = VideoFileClip(source_video)
+    opening = (VideoFileClip(opening)
+               .set_start(0)
+               .crossfadeout(1))
+    full_video = [opening]
+    current_duration = opening.duration
+
+    for i in range(0, len(time_marks), 2):
+        initial_second = time_marks[i]
+        final_second = time_marks[i + 1]
+        print("Generating the full video, appending the clip from", initial_second, "to", final_second)
+        part = (source_video.subclip(initial_second, final_second)
+                .set_start(current_duration)
+                .crossfadein(1)
+                .crossfadeout(1))
+
+        full_video.append(part)
+        current_duration += part.duration
 
     watermark = generate_watermark(opening.duration, current_duration, cut=6)
     full_video.append(watermark)
