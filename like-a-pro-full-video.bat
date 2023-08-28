@@ -1,7 +1,7 @@
 @echo
 cls
 echo Cloning the repository
-git clone https://dev.azure.com/likeapro/Like%20a%20Pro/_git/video-maker
+git clone https://github.com/hahoyosc/video-maker.git
 echo Entering to the project folder
 cd video-maker
 echo Installing the virtual environment
