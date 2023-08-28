@@ -21,7 +21,7 @@ ___
 * `.\venv\Scripts\activate.bat`
 * `pip install -r requirements.txt`
 * Move your clips to the `source` folder
-* `pyhon main.py --source='source/' --output='output/'`
+* `pyhon main.py --source="source/" --output="output/"`
 * Your clips must be available in the `output` folder
 
 ### Executable
