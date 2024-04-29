@@ -2,7 +2,6 @@ from source_download import SourceDownload
 from composite_video import CompositeVideo
 import os
 import json
-os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/6.0/bin/ffmpeg"
 
 
 def get_clips(source):
@@ -57,7 +56,7 @@ if __name__ == '__main__':
                         help="Processed highlights and recap output folder")
     parser.add_argument('-d', '--drive', type=str, default=None, required=False,
                         help="Google Drive ID in case you need to download the highlights")
-    parser.add_argument('-p', '--params', type=str, default='../params.json', required=True,
+    parser.add_argument('-p', '--params', type=str, default='../params.json', required=False,
                         help="Time marks of the relevant parts of the match")
     parser.add_argument('-f', '--full', type=bool, action=argparse.BooleanOptionalAction,
                         help="Process the full match video")
