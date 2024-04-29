@@ -1,6 +1,8 @@
 from source_download import SourceDownload
 from composite_video import CompositeVideo
 import os
+import json
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/opt/homebrew/Cellar/ffmpeg/6.0/bin/ffmpeg"
 
 
 def get_clips(source):
@@ -12,22 +14,20 @@ def get_clips(source):
     return clips
 
 
-def get_params(params):
-    file = open(params, 'r')
-    data = file.read()
-    params_list = data.split('\n')
+def get_params(params_file):
+    file = open(params_file)
+    params = json.load(file)
+
     formatted_params = []
-
-    for param in params_list:
-        hour, minute, second = param.split(':')
+    for timestamp in params['timestamps']:
+        hour, minute, second = timestamp.split(':')
         formatted_params.append(int(hour) * 3600 + int(minute) * 60 + int(second))
+    params['timestamps'] = formatted_params
 
-    file.close()
-
-    return formatted_params
+    return params
 
 
-def main(source, output, drive, params):
+def main(source, output, drive, params, full_video):
 
     if drive:
         SourceDownload.download_file("https://drive.google.com/drive/folders/" + drive)
@@ -35,16 +35,16 @@ def main(source, output, drive, params):
     opening = "tools/opening.mp4"
     clips = get_clips(source)
 
-    if params:
+    if full_video:
         output_video = CompositeVideo.composite_full_video(opening, clips[0], get_params(params))
         output_video.write_videofile(output + "Partido completo.mp4")
 
     else:
         for clip in clips:
             single_clip = CompositeVideo.composite_clip(clip)
-            single_clip.write_videofile(output + clip.replace(source, ""))
+            single_clip.write_videofile(output + clip.replace(source, ''))
 
-        recap = CompositeVideo.composite_recap(opening, clips)
+        recap = CompositeVideo.composite_recap(opening, clips, get_params(params))
         recap.write_videofile(output + "Recopilacion.mp4")
 
 
@@ -57,8 +57,10 @@ if __name__ == '__main__':
                         help="Processed highlights and recap output folder")
     parser.add_argument('-d', '--drive', type=str, default=None, required=False,
                         help="Google Drive ID in case you need to download the highlights")
-    parser.add_argument('-p', '--params', type=str, default=None, required=False,
+    parser.add_argument('-p', '--params', type=str, default='../params.json', required=True,
                         help="Time marks of the relevant parts of the match")
+    parser.add_argument('-f', '--full', type=bool, action=argparse.BooleanOptionalAction,
+                        help="Process the full match video")
     args = parser.parse_args()
 
-    main(source=args.source, output=args.output, drive=args.drive, params=args.params)
+    main(source=args.source, output=args.output, drive=args.drive, params=args.params, full_video=args.full)

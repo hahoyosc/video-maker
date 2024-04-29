@@ -1,0 +1,18 @@
+{
+  "timestamps": [
+    "00:01:00",
+    "00:03:00",
+    "00:05:00",
+    "00:07:00"
+  ],
+  "results": {
+    "teamA": {
+      "name": "Real Madrid Club de Fútbol",
+      "score": 3
+    },
+    "teamB": {
+      "name": "Fútbol Club Barcelona",
+      "score": 1
+    }
+  }
+}
