@@ -2,6 +2,10 @@ from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip
 from moviepy.video.VideoClip import TextClip
 
 
+FONT_PATH = "tools/Lato-Bold.ttf"
+EXTRA_CLIPS_DURATION = 6
+
+
 def generate_watermark(start, duration, cut=None):
     print("Generating watermark starting at", start, "with this duration", duration)
 
@@ -21,31 +25,31 @@ def generate_vs_clip(start, params):
 
     vs_clip = (VideoFileClip("tools/video-vs.mp4")
                .set_start(start)
-               .set_duration(6)
+               .set_duration(EXTRA_CLIPS_DURATION)
                .crossfadein(1)
                .crossfadeout(1))
 
     team_a_text = (TextClip(params['results']['teamA']['name'],
-                            font='Lato-Bold',
+                            font=FONT_PATH,
                             fontsize=75,
                             color='white',
                             method='caption',
                             size=(0.4 * vs_clip.size[0], vs_clip.size[1]))
                    .set_position((0, 'center'))
                    .set_start(start)
-                   .set_duration(6)
+                   .set_duration(EXTRA_CLIPS_DURATION)
                    .crossfadein(1.5)
                    .crossfadeout(1.5))
 
     team_b_text = (TextClip(params['results']['teamB']['name'],
-                            font='Lato-Bold',
+                            font=FONT_PATH,
                             fontsize=75,
                             color='white',
                             method='caption',
                             size=(0.4 * vs_clip.size[0], vs_clip.size[1]))
                    .set_position((0.6 * vs_clip.size[0], 'center'))
                    .set_start(start)
-                   .set_duration(6)
+                   .set_duration(EXTRA_CLIPS_DURATION)
                    .crossfadein(1.5)
                    .crossfadeout(1.5))
 
@@ -67,65 +71,65 @@ def composite_clip(clip):
 def generate_results_clip(start, params):
     background = (ImageClip("tools/results-img.jpg")
                   .set_start(start)
-                  .set_duration(6)
+                  .set_duration(EXTRA_CLIPS_DURATION)
                   .crossfadein(1)
                   .crossfadeout(1))
 
     results_title = (TextClip("RESULTADO DEL PARTIDO",
-                              font='Lato-Bold',
+                              font=FONT_PATH,
                               fontsize=100,
                               color='white')
                      .set_position(('center', 'top'))
                      .set_start(start)
-                     .set_duration(6)
+                     .set_duration(EXTRA_CLIPS_DURATION)
                      .crossfadein(1.5)
                      .crossfadeout(1.5))
 
     team_a_text = (TextClip(params['results']['teamA']['name'],
-                            font='Lato-Bold',
+                            font=FONT_PATH,
                             fontsize=75,
                             color='white',
                             method='caption',
                             size=(0.4 * background.size[0], 0.5 * background.size[1]))
                    .set_position((0, 0.1 * background.size[1]))
                    .set_start(start)
-                   .set_duration(6)
+                   .set_duration(EXTRA_CLIPS_DURATION)
                    .crossfadein(1.5)
                    .crossfadeout(1.5))
 
     team_a_score = (TextClip(str(params['results']['teamA']['score']),
-                             font='Lato-Bold',
+                             font=FONT_PATH,
                              fontsize=200,
                              color='white',
                              method='caption',
                              size=(0.4 * background.size[0], 0.5 * background.size[1]))
                     .set_position((0, 0.4 * background.size[1]))
                     .set_start(start)
-                    .set_duration(6)
+                    .set_duration(EXTRA_CLIPS_DURATION)
                     .crossfadein(1.5)
                     .crossfadeout(1.5))
 
     team_b_text = (TextClip(params['results']['teamB']['name'],
-                            font='Lato-Bold',
+                            font=FONT_PATH,
                             fontsize=75,
                             color='white',
                             method='caption',
                             size=(0.4 * background.size[0], 0.5 * background.size[1]))
                    .set_position((0.6 * background.size[0], 0.1 * background.size[1]))
                    .set_start(start)
-                   .set_duration(6)
+                   .set_duration(EXTRA_CLIPS_DURATION)
                    .crossfadein(1.5)
                    .crossfadeout(1.5))
 
     team_b_score = (TextClip(str(params['results']['teamB']['score']),
-                             font='Lato-Bold',
+                             font=FONT_PATH,
                              fontsize=200,
                              color='white',
                              method='caption',
                              size=(0.4 * background.size[0], 0.5 * background.size[1]))
                     .set_position((0.6 * background.size[0], 0.4 * background.size[1]))
                     .set_start(start)
-                    .set_duration(6)
+                    .set_duration(EXTRA_CLIPS_DURATION)
                     .crossfadein(1.5)
                     .crossfadeout(1.5))
 
@@ -151,8 +155,9 @@ def composite_recap(opening, clips, params):
         recap.append(video_clip)
         current_duration += video_clip.duration
 
-    recap.append(generate_results_clip(current_duration, params))
-    current_duration += 6
+    results_clip = generate_results_clip(current_duration, params)
+    recap.append(results_clip)
+    current_duration += results_clip.duration
 
     watermark = generate_watermark(opening.duration, current_duration, cut=6)
     recap.append(watermark)

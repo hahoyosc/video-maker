@@ -15,7 +15,7 @@ def get_clips(source):
 
 
 def get_params(params_file):
-    file = open(params_file)
+    file = open(params_file, encoding='utf-8')
     params = json.load(file)
 
     formatted_params = []
