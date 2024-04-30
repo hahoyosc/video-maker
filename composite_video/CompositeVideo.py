@@ -69,6 +69,8 @@ def composite_clip(clip):
 
 
 def generate_results_clip(start, params):
+    print("Generating the results clip starting at", start)
+
     background = (ImageClip("tools/results-img.jpg")
                   .set_start(start)
                   .set_duration(EXTRA_CLIPS_DURATION)
@@ -155,9 +157,8 @@ def composite_recap(opening, clips, params):
         recap.append(video_clip)
         current_duration += video_clip.duration
 
-    results_clip = generate_results_clip(current_duration, params)
-    recap.append(results_clip)
-    current_duration += results_clip.duration
+    recap.append(generate_results_clip(current_duration, params))
+    current_duration += EXTRA_CLIPS_DURATION
 
     watermark = generate_watermark(opening.duration, current_duration, cut=6)
     recap.append(watermark)
