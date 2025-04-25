@@ -1,193 +1,267 @@
-from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip
-from moviepy.video.VideoClip import TextClip
+import ffmpeg
+import time
+import os
 
+from config import *
 
-FONT_PATH = "tools/Lato-Bold.ttf"
-EXTRA_CLIPS_DURATION = 6
+watermark = ffmpeg.input(f'{TOOLS_FOLDER}{WATERMARK_IMAGE}').filter('scale', f'{WATERMAR_SCALE}*in_w', f'{WATERMAR_SCALE}*in_h')
 
+def get_info(input_file):
+    info = {}
+    probe = ffmpeg.probe(input_file)
+    try:
+        for stream in probe['streams']:
+            if stream['codec_type'] == 'video':
+                info["vcodec"] = stream['codec_name']
+                info["width"] = int(stream['width'])
+                info["height"] = int(stream['height'])
+                info["fps"] = round(eval(stream['avg_frame_rate']), 2)
+                info["duration"] = float(stream['duration'])
+            elif stream['codec_type'] == 'audio':
+                info["acode"] = stream['codec_name']
 
-def generate_watermark(start, duration, cut=None):
-    print("Generating watermark starting at", start, "with this duration", duration)
+    except:
+        return info
 
-    final_cut = cut if cut else 0
+    return info
 
-    return (ImageClip("tools/logo.png")
-            .set_position((0.885, 0.83), relative=True)
-            .set_start(start)
-            .set_duration(duration - final_cut)
-            .resize(0.15)
-            .crossfadein(1)
-            .crossfadeout(1))
+def get_opening_clip(fps, output, params):
+    start = time.time()
+    vcodec = params['config']['vcodec']
+    acodec = params['config']['acodec']
+    audio = ffmpeg.input("anullsrc=r=48000:cl=stereo", f="lavfi").audio
 
+    filename = f'{TOOLS_FOLDER}{OPENING_VIDEO}'
+    output_file = f'{output}{OPENING_VIDEO}'
+    info = get_info(filename)
+    info_str = " ".join(f"{v}" for v in info.values())
+    print(f'EXT - processing opening clip {filename} ({info_str}) ...', end='\r', flush=True)
 
-def generate_vs_clip(start, params):
-    print("Generating the vs clip starting at", start)
+    video = ffmpeg.input(filename)
+    out_clip = video.filter('fade', t='out', st=EXTRA_CLIPS_DURATION-1, d=1)
+    video_output = ffmpeg.output(out_clip, audio, output_file, t=EXTRA_CLIPS_DURATION, vcodec=vcodec, acodec=acodec, r=fps)
+    ffmpeg.run(video_output, overwrite_output=True, quiet=QUIET_FFMPEG)
 
-    vs_clip = (VideoFileClip("tools/video-vs.mp4")
-               .set_start(start)
-               .set_duration(EXTRA_CLIPS_DURATION)
-               .crossfadein(1)
-               .crossfadeout(1))
+    elapsed = round(time.time() - start, 1)
+    print(f'EXT - processing opening clip {filename} ({info_str}): {elapsed}s')
+    return output_file
 
-    team_a_text = (TextClip(params['results']['teamA']['name'],
-                            font=FONT_PATH,
-                            fontsize=75,
-                            color='white',
-                            method='caption',
-                            size=(0.4 * vs_clip.size[0], vs_clip.size[1]))
-                   .set_position((0, 'center'))
-                   .set_start(start)
-                   .set_duration(EXTRA_CLIPS_DURATION)
-                   .crossfadein(1.5)
-                   .crossfadeout(1.5))
+def generate_vs_clip(fps, output, params):
+    start = time.time()
+    vcodec = params['config']['vcodec']
+    acodec = params['config']['acodec']
+    audio = ffmpeg.input("anullsrc=r=48000:cl=stereo", f="lavfi").audio
 
-    team_b_text = (TextClip(params['results']['teamB']['name'],
-                            font=FONT_PATH,
-                            fontsize=75,
-                            color='white',
-                            method='caption',
-                            size=(0.4 * vs_clip.size[0], vs_clip.size[1]))
-                   .set_position((0.6 * vs_clip.size[0], 'center'))
-                   .set_start(start)
-                   .set_duration(EXTRA_CLIPS_DURATION)
-                   .crossfadein(1.5)
-                   .crossfadeout(1.5))
+    filename = f'{TOOLS_FOLDER}{VS_VIDEO}'
+    output_file = f'{output}{VS_VIDEO}'
+    info = get_info(filename)
+    info_str = " ".join(f"{v}" for v in info.values())
+    print(f'EXT - processing vs clip {filename} ({info_str}) ...', end='\r', flush=True)
 
-    return CompositeVideoClip([vs_clip, team_a_text, team_b_text])
+    team_a = params["results"]["teamA"]["name"]
+    team_b = params["results"]["teamB"]["name"]
+    crest_a = params["results"]["teamA"]["crest"]
+    crest_b = params["results"]["teamB"]["crest"]
 
+    draw_crestmark_a = False
+    draw_crestmark_b = False
+    text_pos_h = 0.5
+    if crest_a != '':
+        crest_a = f'{CRESTS_FOLDER}{crest_a}' if '/' not in crest_a else crest_a
+        crestmark_a = ffmpeg.input(crest_a).filter('scale', CRESTS_SIZE, CRESTS_SIZE)
+        draw_crestmark_a = True
+        text_pos_h = 0.25
 
-def composite_clip(clip):
-    print("Generating the output for the clip", clip)
+    if crest_b != '':
+        crest_b = f'{CRESTS_FOLDER}{crest_b}' if '/' not in crest_b else crest_b
+        crestmark_b = ffmpeg.input(crest_b).filter('scale', CRESTS_SIZE, CRESTS_SIZE)
+        draw_crestmark_b = True
+        text_pos_h = 0.25
 
-    clip = (VideoFileClip(clip)
-            .set_start(0)
-            .crossfadein(1)
-            .crossfadeout(1))
-    watermark = generate_watermark(0, clip.duration)
+    out_clip = ffmpeg.input(filename, r=fps)
+    out_clip = out_clip.drawtext(text=team_a, x=f'{TEAM_A_X_ALIGN}*main_w-0.5*tw', y=f'{text_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_NAMES_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.drawtext(text=team_b, x=f'{TEAM_B_X_ALIGN}*main_w-0.5*tw', y=f'{text_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_NAMES_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.overlay(crestmark_a, x=f'{TEAM_A_X_ALIGN}*main_w-0.5*overlay_w', y='0.5*main_h-0.5*overlay_h') if draw_crestmark_a else out_clip
+    out_clip = out_clip.overlay(crestmark_b, x=f'{TEAM_B_X_ALIGN}*main_w-0.5*overlay_w', y='0.5*main_h-0.5*overlay_h') if draw_crestmark_b else out_clip
 
-    return CompositeVideoClip([clip, watermark])
+    out_clip = out_clip.overlay(watermark, x=f'main_w-{WATERMARK_OFFSET_RIGHT_X}', y=f'main_h-{WATERMARK_OFFSET_BOTTOM_Y}')
+    out_clip = out_clip.filter('fade', t='in', st=0, d=1).filter('fade', t='out', st=EXTRA_CLIPS_DURATION-1, d=1)
+    video_output = ffmpeg.output(out_clip, audio, output_file, t=EXTRA_CLIPS_DURATION, vcodec=vcodec, acodec=acodec, r=fps)
+    ffmpeg.run(video_output, overwrite_output=True, quiet=QUIET_FFMPEG)
 
+    elapsed = round(time.time() - start, 1)
+    print(f'EXT - processing vs clip {filename} ({info_str}): {elapsed}s')
+    return output_file
 
-def generate_results_clip(start, params):
-    print("Generating the results clip starting at", start)
+def generate_results_clip(fps, output, params):
+    start = time.time()
+    vcodec = params['config']['vcodec']
+    acodec = params['config']['acodec']
+    audio = ffmpeg.input("anullsrc=r=48000:cl=stereo", f="lavfi").audio
 
-    background = (ImageClip("tools/results-img.jpg")
-                  .set_start(start)
-                  .set_duration(EXTRA_CLIPS_DURATION)
-                  .crossfadein(1)
-                  .crossfadeout(1))
+    filename = f'{TOOLS_FOLDER}{RESULTS_IMAGE}'
+    output_file = f'{output}{RESULTS_VIDEO}'
+    info = get_info(filename)
+    info_str = " ".join(f"{v}" for v in info.values())
+    print(f'EXT - processing results clip {filename} ({info_str}) ...', end='\r', flush=True)
 
-    results_title = (TextClip("RESULTADO DEL PARTIDO",
-                              font=FONT_PATH,
-                              fontsize=100,
-                              color='white')
-                     .set_position(('center', 'top'))
-                     .set_start(start)
-                     .set_duration(EXTRA_CLIPS_DURATION)
-                     .crossfadein(1.5)
-                     .crossfadeout(1.5))
+    team_a = params["results"]["teamA"]["name"]
+    team_b = params["results"]["teamB"]["name"]
+    score_a = params["results"]["teamA"]["score"]
+    score_b = params["results"]["teamB"]["score"]
+    crest_a = params["results"]["teamA"]["crest"]
+    crest_b = params["results"]["teamB"]["crest"]
 
-    team_a_text = (TextClip(params['results']['teamA']['name'],
-                            font=FONT_PATH,
-                            fontsize=75,
-                            color='white',
-                            method='caption',
-                            size=(0.4 * background.size[0], 0.5 * background.size[1]))
-                   .set_position((0, 0.1 * background.size[1]))
-                   .set_start(start)
-                   .set_duration(EXTRA_CLIPS_DURATION)
-                   .crossfadein(1.5)
-                   .crossfadeout(1.5))
+    draw_crestmark_a = False
+    draw_crestmark_b = False
+    text_pos_h = 0.35
+    score_pos_h = 0.6
+    if crest_a != '':
+        crest_a = f'{CRESTS_FOLDER}{crest_a}' if '/' not in crest_a else crest_a
+        crestmark_a = ffmpeg.input(crest_a).filter('scale', CRESTS_SIZE, CRESTS_SIZE)
+        draw_crestmark_a = True
+        text_pos_h = 0.25
+        score_pos_h = 0.8
+    if crest_b != '':
+        crest_b = f'{CRESTS_FOLDER}{crest_b}' if '/' not in crest_b else crest_b
+        crestmark_b = ffmpeg.input(crest_b).filter('scale', CRESTS_SIZE, CRESTS_SIZE)
+        draw_crestmark_b = True
+        text_pos_h = 0.25
+        score_pos_h = 0.8
 
-    team_a_score = (TextClip(str(params['results']['teamA']['score']),
-                             font=FONT_PATH,
-                             fontsize=200,
-                             color='white',
-                             method='caption',
-                             size=(0.4 * background.size[0], 0.5 * background.size[1]))
-                    .set_position((0, 0.4 * background.size[1]))
-                    .set_start(start)
-                    .set_duration(EXTRA_CLIPS_DURATION)
-                    .crossfadein(1.5)
-                    .crossfadeout(1.5))
+    video = ffmpeg.input(filename, loop=1, t=EXTRA_CLIPS_DURATION, r=fps)
+    out_clip = video.drawtext(text='RESULTADO DEL PARTIDO', x='0.5*w-0.5*tw', y='0.06*h-0.5*th', fontfile=FONT_PATH, fontsize=RES_TITLE_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.drawtext(text=team_a, x=f'{TEAM_A_X_ALIGN}*main_w-0.5*tw', y=f'{text_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_NAMES_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.drawtext(text=team_b, x=f'{TEAM_B_X_ALIGN}*main_w-0.5*tw', y=f'{text_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_NAMES_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.drawtext(text=score_a, x=f'{TEAM_A_X_ALIGN}*main_w-0.5*tw', y=f'{score_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_SCORE_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.drawtext(text=score_b, x=f'{TEAM_B_X_ALIGN}*main_w-0.5*tw', y=f'{score_pos_h}*main_h-0.5*th', fontfile=FONT_PATH, fontsize=RES_SCORE_FS, fontcolor=FONT_COLOR)
+    out_clip = out_clip.overlay(crestmark_a, x=f'{TEAM_A_X_ALIGN}*main_w-0.5*overlay_w', y='0.5*main_h-0.5*overlay_h') if draw_crestmark_a else out_clip
+    out_clip = out_clip.overlay(crestmark_b, x=f'{TEAM_B_X_ALIGN}*main_w-0.5*overlay_w', y='0.5*main_h-0.5*overlay_h') if draw_crestmark_b else out_clip
 
-    team_b_text = (TextClip(params['results']['teamB']['name'],
-                            font=FONT_PATH,
-                            fontsize=75,
-                            color='white',
-                            method='caption',
-                            size=(0.4 * background.size[0], 0.5 * background.size[1]))
-                   .set_position((0.6 * background.size[0], 0.1 * background.size[1]))
-                   .set_start(start)
-                   .set_duration(EXTRA_CLIPS_DURATION)
-                   .crossfadein(1.5)
-                   .crossfadeout(1.5))
+    out_clip = out_clip.overlay(watermark, x=f'main_w-{WATERMARK_OFFSET_RIGHT_X}', y=f'main_h-{WATERMARK_OFFSET_BOTTOM_Y}')
+    out_clip = out_clip.filter('fade', t='in', st=0, d=1).filter('fade', t='out', st=EXTRA_CLIPS_DURATION-1, d=1)
+    video_output = ffmpeg.output(out_clip, audio, output_file, t=EXTRA_CLIPS_DURATION, vcodec=vcodec, acodec=acodec, r=fps)
+    ffmpeg.run(video_output, overwrite_output=True, quiet=QUIET_FFMPEG)
 
-    team_b_score = (TextClip(str(params['results']['teamB']['score']),
-                             font=FONT_PATH,
-                             fontsize=200,
-                             color='white',
-                             method='caption',
-                             size=(0.4 * background.size[0], 0.5 * background.size[1]))
-                    .set_position((0.6 * background.size[0], 0.4 * background.size[1]))
-                    .set_start(start)
-                    .set_duration(EXTRA_CLIPS_DURATION)
-                    .crossfadein(1.5)
-                    .crossfadeout(1.5))
+    elapsed = round(time.time() - start, 1)
+    print(f'EXT - processing results clip {filename} ({info_str}): {elapsed}s')
+    return output_file
 
-    return CompositeVideoClip([background, results_title, team_a_text, team_a_score, team_b_text, team_b_score])
+def composite_clips(clips, output, params, full_video=False):
+    clip_files = []
+    vcodec = params['config']['vcodec']
+    acodec = params['config']['acodec']
+    name_a = params["results"]["teamA"]["short_name"]
+    name_b = params["results"]["teamB"]["short_name"]
+    crest_a = params["results"]["teamA"]["crest"]
+    crest_b = params["results"]["teamB"]["crest"]
+    debug = params['config']['debug']
+    if debug:
+        QUIET_FFMPEG = False
+    else:
+        QUIET_FFMPEG = True
 
+    draw_crestmark_a = False
+    draw_crestmark_b = False
+    if crest_a != '':
+        crest_a = f'{CRESTS_FOLDER}{crest_a}' if '/' not in crest_a else crest_a
+        crestmark_a = ffmpeg.input(crest_a).filter('scale', SCORE_CRESTS_SIZE, SCORE_CRESTS_SIZE)
+        draw_crestmark_a = True
+    if crest_b != '':
+        crest_b = f'{CRESTS_FOLDER}{crest_b}' if '/' not in crest_b else crest_b
+        crestmark_b = ffmpeg.input(crest_b).filter('scale', SCORE_CRESTS_SIZE, SCORE_CRESTS_SIZE)
+        draw_crestmark_b = True
 
-def composite_recap(opening, clips, params):
-    print("Generating the recap with these clips", clips)
+    score_a = 0
+    score_b = 0
+    for i, clip in enumerate(clips):
+        start = time.time()
+        filename = clip.split('/')[-1]
+        output_file = f'{output}{filename}'
+        goal_clip = False
+        goal_a = False
+        if GOAL_A_KEY in filename:
+            score_a += 1
+            goal_clip = True
+            goal_a = True
+        elif GOAL_B_KEY in filename:
+            score_b += 1
+            goal_clip = True
 
-    opening = (VideoFileClip(opening)
-               .set_start(0)
-               .crossfadeout(1))
-    vs_clip = generate_vs_clip(opening.duration, params)
-    recap = [opening, vs_clip]
-    current_duration = vs_clip.duration
+        info = get_info(clip)
+        duration = info["duration"]
+        fps = info["fps"]
+        info_str = " ".join(f"{v}" for v in info.values())
+        print(f'{str(i+1).zfill(3)} - processing file {filename} ({info_str}) ...', end='\r', flush=True)
 
-    for clip in clips:
-        print("Appending the clip", clip, "at the second", current_duration)
-        video_clip = (VideoFileClip(clip)
-                      .set_start(current_duration)
-                      .crossfadein(1)
-                      .crossfadeout(1))
-        recap.append(video_clip)
-        current_duration += video_clip.duration
+        video = ffmpeg.input(clip)
+        audio = video.audio
+        out_clip = video.overlay(watermark, x=f'main_w-{WATERMARK_OFFSET_RIGHT_X}', y=f'main_h-{WATERMARK_OFFSET_BOTTOM_Y}')
 
-    recap.append(generate_results_clip(current_duration, params))
-    current_duration += EXTRA_CLIPS_DURATION
+        if not full_video:
+            score_text = f"{score_a} - {score_b}"
+            score_text_post = ''
+            enable = f'between(t,{0},{duration})'
+            enable_post = ''
+            if goal_clip:
+                trans = duration - SCORE_TRANSITION_TIME
+                enable = f'between(t,{0},{trans})'
+                enable_post = f'between(t,{trans},{duration})'
+                score_text_post = f"{score_a} - {score_b}"
+                if goal_a:
+                    score_text = f"{score_a - 1} - {score_b}"
+                else:
+                    score_text = f"{score_a} - {score_b - 1}"
 
-    watermark = generate_watermark(opening.duration, current_duration, cut=6)
-    recap.append(watermark)
+            if not (draw_crestmark_a and draw_crestmark_b):
+                score_text = f"{name_a}   {score_text}   {name_b}"
+                score_text_post = f"{name_a}   {score_text_post}   {name_b}"
 
-    return CompositeVideoClip(recap)
+            out_clip = out_clip.drawtext(text=score_text, fontfile=FONT_PATH, x=f'{SCORE_X_CENTER}*w-0.5*tw', y=f'{SCORE_Y_CENTER}*h-0.5*th', fontsize=60, fontcolor=FONT_COLOR, shadowcolor='black@0.8', shadowx=2, shadowy=2, enable=enable)
+            out_clip = out_clip.drawtext(text=score_text_post, fontfile=FONT_PATH, x=f'{SCORE_X_CENTER}*w-0.5*tw', y=f'{SCORE_Y_CENTER}*h-0.5*th', fontsize=60, fontcolor=FONT_COLOR, shadowcolor='black@0.8', shadowx=2, shadowy=2, enable=enable_post) if goal_clip else out_clip
 
+            out_clip = out_clip.overlay(crestmark_a, x=f'{SCORE_X_CENTER}*main_w-0.5*overlay_w-{SCORE_CRESTS_DX}', y=f'{SCORE_Y_CENTER}*main_h-0.5*overlay_h') if draw_crestmark_a and draw_crestmark_b else out_clip
+            out_clip = out_clip.overlay(crestmark_b, x=f'{SCORE_X_CENTER}*main_w-0.5*overlay_w+{SCORE_CRESTS_DX}', y=f'{SCORE_Y_CENTER}*main_h-0.5*overlay_h') if draw_crestmark_a and draw_crestmark_b else out_clip
 
-def composite_full_video(opening, source_video, params):
-    source_video = VideoFileClip(source_video)
-    opening = (VideoFileClip(opening)
-               .set_start(0)
-               .crossfadeout(1))
-    full_video = [opening]
-    current_duration = opening.duration
-    time_marks = params['timestamps']
+        out_clip = out_clip.filter('fade', t='in', st=0, d=1).filter('fade', t='out', st=duration-1, d=1)
+        video_output = ffmpeg.output(out_clip, audio, output_file, vcodec=vcodec, acodec=acodec, r=fps)
+        ffmpeg.run(video_output, overwrite_output=True, quiet=QUIET_FFMPEG)
 
-    for i in range(0, len(time_marks), 2):
-        initial_second = time_marks[i]
-        final_second = time_marks[i + 1]
-        print("Generating the full video, appending the clip from", initial_second, "to", final_second)
-        part = (source_video.subclip(initial_second, final_second)
-                .set_start(current_duration)
-                .crossfadein(1)
-                .crossfadeout(1))
+        elapsed = round(time.time() - start, 1)
+        print(f'{str(i+1).zfill(3)} - processing file {filename} ({info_str}): {elapsed}s')
 
-        full_video.append(part)
-        current_duration += part.duration
+        clip_files.append(output_file)
 
-    watermark = generate_watermark(opening.duration, current_duration, cut=6)
-    full_video.append(watermark)
+    opening_clip = get_opening_clip(fps, output, params)
+    vs_clip = generate_vs_clip(fps, output, params)
+    results_clip = generate_results_clip(fps, output, params)
 
-    return CompositeVideoClip(full_video)
+    clip_files = [opening_clip, vs_clip] + clip_files + [results_clip]
+    if full_video:
+        concatenate_clips(clip_files, output, params, file_name=FULL_MATCH_FILENAME)
+    else:
+        concatenate_clips(clip_files, output, params, file_name=RECAP_FILENAME)
+
+    for clip_to_delete in [opening_clip, vs_clip, results_clip]:
+        if os.path.exists(clip_to_delete):
+            os.remove(clip_to_delete)
+
+def concatenate_clips(clips, output, params, file_name):
+    print('END - concatenating videos...', end='\r', flush=True)
+    start = time.time()
+    vcodec = params['config']['vcodec']
+    acodec = params['config']['acodec']
+
+    output_file = f'{output}{file_name}'
+    inputs = [ffmpeg.input(video) for video in clips]
+    video_streams = [video.video for video in inputs]
+    audio_streams = [video.audio for video in inputs]
+
+    video_concat = ffmpeg.concat(*video_streams, v=1, a=0).node
+    audio_concat = ffmpeg.concat(*audio_streams, v=0, a=1).node
+
+    output = ffmpeg.output(video_concat[0], audio_concat[0], output_file, vcodec=vcodec, acodec=acodec)
+    ffmpeg.run(output, overwrite_output=True, quiet=QUIET_FFMPEG)
+
+    elapsed = round(time.time() - start, 1)
+    print(f'END - concatenating videos: {elapsed}s')
