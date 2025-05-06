@@ -2,6 +2,7 @@ from source_download import SourceDownload
 from composite_video import CompositeVideo
 import os
 import json
+import time
 
 
 def get_clips(source):
@@ -27,24 +28,24 @@ def get_params(params_file):
 
 
 def main(source, output, drive, params, full_video):
-
+    total_start = time.time()
+    params = get_params(params)
     if drive:
         SourceDownload.download_file("https://drive.google.com/drive/folders/" + drive)
 
-    opening = "tools/opening.mp4"
     clips = get_clips(source)
-
+    team_a = params['results']['teamA']['name']
+    team_b = params['results']['teamB']['name']
     if full_video:
-        output_video = CompositeVideo.composite_full_video(opening, clips[0], get_params(params))
-        output_video.write_videofile(output + "Partido completo.mp4")
-
+        print(f'Started processing full match {team_a} vs {team_b}: {len(clips)} video found (only first will be processed)')
+        CompositeVideo.composite_clips([clips[0]], output, params, full_video=True)
     else:
-        for clip in clips:
-            single_clip = CompositeVideo.composite_clip(clip)
-            single_clip.write_videofile(output + clip.replace(source, ''))
+        print(f'Started processing clips for match {team_a} vs {team_b}: {len(clips)} clips found')
+        CompositeVideo.composite_clips(clips, output, params)
 
-        recap = CompositeVideo.composite_recap(opening, clips, get_params(params))
-        recap.write_videofile(output + "Recopilacion.mp4")
+    total_elapsed = round(time.time() - total_start, 1)
+    print(f'Succesfully processed clips - Done in {total_elapsed}s')
+    time.sleep(5)
 
 
 if __name__ == '__main__':

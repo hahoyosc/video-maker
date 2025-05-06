@@ -15,7 +15,7 @@ pip install -r requirements.txt
 Creating the processed highlights output folder
 mkdir ..\output
 echo Running the project
-start /wait python main.py
+start /wait cmd /c "python main.py || pause"
 echo Deleting every project files
 cd ..
 rmdir /s /q video-maker

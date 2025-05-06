@@ -1,4 +1,9 @@
 {
+  "config": {
+    "vcodec": "libx264",
+    "acodec": "aac",
+    "debug": false
+  },
   "timestamps": [
     "00:01:00",
     "00:03:00",
@@ -8,11 +13,15 @@
   "results": {
     "teamA": {
       "name": "Real Madrid Club de Fútbol",
-      "score": 3
+      "short_name": "RMA",
+      "score": 3,
+      "crest": "realmadrid.png"
     },
     "teamB": {
       "name": "Fútbol Club Barcelona",
-      "score": 1
+      "short_name": "BAR",
+      "score": 1,
+      "crest": "barcelona.png"
     }
   }
 }
