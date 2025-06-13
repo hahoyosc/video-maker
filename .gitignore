@@ -1,3 +1,5 @@
 /.idea/
 /archive/
 *__pycache__*
+/build/
+/dist/
